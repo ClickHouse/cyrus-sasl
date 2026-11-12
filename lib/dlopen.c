@@ -397,6 +397,30 @@ int _sasl_get_plugin(const char *file,
 #endif /* DO_DLOPEN */
 }
 
+#ifndef PIC
+/* add_plugin_t adapters: Clang CFI (cfi-icall) rejects calling the typed
+ * sasl_*_add_plugin functions through a pointer of type add_plugin_t. */
+static int add_server_plugin(const char *plugname, void *entry_point)
+{
+    return sasl_server_add_plugin(plugname, (sasl_server_plug_init_t *)entry_point);
+}
+
+static int add_client_plugin(const char *plugname, void *entry_point)
+{
+    return sasl_client_add_plugin(plugname, (sasl_client_plug_init_t *)entry_point);
+}
+
+static int add_auxprop_plugin(const char *plugname, void *entry_point)
+{
+    return sasl_auxprop_add_plugin(plugname, (sasl_auxprop_init_t *)entry_point);
+}
+
+static int add_canonuser_plugin(const char *plugname, void *entry_point)
+{
+    return sasl_canonuser_add_plugin(plugname, (sasl_canonuser_init_t *)entry_point);
+}
+#endif
+
 /* gets the list of mechanisms */
 int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 		       const sasl_callback_t *getpath_cb,
@@ -437,16 +461,16 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	/* What type of plugin are we looking for? */
 	if(!strcmp(cur_ep->entryname, "sasl_server_plug_init")) {
 	    type = SERVER;
-	    add_plugin = (add_plugin_t *)sasl_server_add_plugin;
+	    add_plugin = add_server_plugin;
 	} else if (!strcmp(cur_ep->entryname, "sasl_client_plug_init")) {
 	    type = CLIENT;
-	    add_plugin = (add_plugin_t *)sasl_client_add_plugin;
+	    add_plugin = add_client_plugin;
 	} else if (!strcmp(cur_ep->entryname, "sasl_auxprop_plug_init")) {
 	    type = AUXPROP;
-	    add_plugin = (add_plugin_t *)sasl_auxprop_add_plugin;
+	    add_plugin = add_auxprop_plugin;
 	} else if (!strcmp(cur_ep->entryname, "sasl_canonuser_init")) {
 	    type = CANONUSER;
-	    add_plugin = (add_plugin_t *)sasl_canonuser_add_plugin;
+	    add_plugin = add_canonuser_plugin;
 	} else {
 	    /* What are we looking for then? */
 	    return SASL_FAIL;
